@@ -1,80 +1,24 @@
 from __future__ import annotations
 
-import sys
 import time
 from datetime import datetime, timezone
 
-import boto3
 import click
-from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError, ProfileNotFound
+from botocore.exceptions import ClientError
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-from .cloudwatch import iter_log_events, aggregate, get_time_range, LOG_GROUP
-from .display import build_table, total_cost
+from .client import make_client, handle_client_error
+from .cloudwatch import iter_log_events, aggregate, get_time_range
+from .display import build_table, total_cost, period_label
 from .setup_cmd import run_setup
 
 console = Console()
 
 _POLL_SECONDS = 5
-_LIVE_OVERLAP_MS = 90_000  # re-fetch this far back each poll to catch delayed ingestion
-
-
-def _make_client(region: str | None, profile: str | None):
-    try:
-        session = boto3.Session(profile_name=profile, region_name=region)
-        resolved_region = session.region_name
-        client = session.client("logs")
-        return client
-    except ProfileNotFound as exc:
-        console.print(f"[red]AWS profile not found:[/red] {exc}")
-        sys.exit(1)
-    except NoRegionError:
-        if resolved_region:
-            console.print(
-                f"[red]CloudWatch Logs is not available in region: {resolved_region}[/red]\n"
-                "Pass [bold]--region[/bold] with a supported region."
-            )
-        else:
-            console.print(
-                "[red]No AWS region configured.[/red] "
-                "Pass [bold]--region[/bold] or set [bold]AWS_DEFAULT_REGION[/bold]."
-            )
-        sys.exit(1)
-
-
-def _period_label(period: str) -> str:
-    now = datetime.now()
-    if period == "today":
-        return f"Today ({now.strftime('%Y-%m-%d')})"
-    if period == "yesterday":
-        from datetime import timedelta
-        y = now - timedelta(days=1)
-        return f"Yesterday ({y.strftime('%Y-%m-%d')})"
-    if period == "week":
-        return "Past 7 Days"
-    return period
-
-
-def _handle_client_error(exc: ClientError) -> None:
-    code = exc.response["Error"]["Code"]
-    msg  = exc.response["Error"]["Message"]
-    if code == "ResourceNotFoundException":
-        console.print(f"[yellow]Log group not found:[/yellow] {LOG_GROUP}")
-        console.print(
-            "[dim]Run [bold]bedrock-usage --setup[/bold] to enable "
-            "Bedrock model invocation logging.[/dim]"
-        )
-    elif code in ("AccessDeniedException", "UnauthorizedException"):
-        console.print(f"[red]Access denied:[/red] {msg}")
-        console.print(
-            "[dim]Your credentials need [bold]logs:FilterLogEvents[/bold] "
-            f"on [bold]{LOG_GROUP}[/bold].[/dim]"
-        )
-    else:
-        console.print(f"[red]AWS error ({code}):[/red] {msg}")
+_LIVE_OVERLAP_MS = 90_000
 
 
 # ── CLI definition ────────────────────────────────────────────────────────────
@@ -119,15 +63,7 @@ def main(
         run_setup(region, profile)
         return
 
-    try:
-        client = _make_client(region, profile)
-    except NoCredentialsError:
-        console.print(
-            "[red]No AWS credentials found.[/red] "
-            "Configure them with [bold]aws configure[/bold] or set "
-            "[bold]AWS_ACCESS_KEY_ID[/bold] / [bold]AWS_SECRET_ACCESS_KEY[/bold]."
-        )
-        sys.exit(1)
+    client = make_client(region, profile)
 
     if live:
         _run_live(client, period, threshold)
@@ -138,15 +74,15 @@ def main(
 # ── One-shot display ──────────────────────────────────────────────────────────
 
 def _run_once(client, period: str, threshold: float | None) -> None:
+    label = period_label(period)
     start_ms, end_ms = get_time_range(period)
-    label = _period_label(period)
 
     console.print(f"[dim]Fetching {label} from CloudWatch…[/dim]")
 
     try:
         records = list(iter_log_events(client, start_ms, end_ms))
     except ClientError as exc:
-        _handle_client_error(exc)
+        handle_client_error(exc)
         return
 
     usage = aggregate(records)
@@ -175,18 +111,15 @@ def _run_once(client, period: str, threshold: float | None) -> None:
 # ── Live tail mode ────────────────────────────────────────────────────────────
 
 def _run_live(client, period: str, threshold: float | None) -> None:
+    label     = period_label(period)
     start_ms, _ = get_time_range(period)
-    label        = _period_label(period)
 
-    # Incremental usage dict; updated in-place so we never re-aggregate everything.
     usage: dict[str, dict] = {}
     seen_ids: set[str] = set()
     threshold_alerted = False
 
-    def ingest(from_ms: int) -> int:
-        """Fetch events from from_ms to now, merge into usage. Returns new count."""
-        to_ms   = int(datetime.now(timezone.utc).timestamp() * 1000)
-        new_cnt = 0
+    def ingest(from_ms: int) -> None:
+        to_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
         try:
             for r in iter_log_events(client, from_ms, to_ms):
                 eid = r.get("_eventId", "")
@@ -199,19 +132,14 @@ def _run_live(client, period: str, threshold: float | None) -> None:
                 out   = (r.get("output") or {}).get("outputTokenCount") or 0
                 if model not in usage:
                     usage[model] = {"calls": 0, "input_tokens": 0, "output_tokens": 0}
-                usage[model]["calls"]        += 1
-                usage[model]["input_tokens"] += inp
+                usage[model]["calls"]         += 1
+                usage[model]["input_tokens"]  += inp
                 usage[model]["output_tokens"] += out
-                new_cnt += 1
         except ClientError as exc:
-            _handle_client_error(exc)
-        return new_cnt
+            handle_client_error(exc)
 
     def render(last_update: str) -> Panel:
-        if not usage:
-            body = Text("Waiting for Bedrock invocations…", style="dim italic")
-        else:
-            body = build_table(usage)
+        body = build_table(usage) if usage else Text("Waiting for Bedrock invocations…", style="dim italic")
         return Panel(
             body,
             title=f"[bold]Bedrock Live Monitor[/bold]  [dim]—  {label}[/dim]",
@@ -223,34 +151,28 @@ def _run_live(client, period: str, threshold: float | None) -> None:
             border_style="blue",
         )
 
-    # Initial full load for the period, then subsequent polls cover only recent window.
     console.print("[dim]Loading initial data…[/dim]")
     ingest(start_ms)
     poll_from_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - _LIVE_OVERLAP_MS
-    now_str      = datetime.now().strftime("%H:%M:%S")
 
-    with Live(render(now_str), refresh_per_second=2, console=console) as live:
+    with Live(render(datetime.now().strftime("%H:%M:%S")), refresh_per_second=2, console=console) as live:
         try:
             while True:
                 time.sleep(_POLL_SECONDS)
-
-                new_cnt      = ingest(max(start_ms, poll_from_ms))
+                ingest(max(start_ms, poll_from_ms))
                 poll_from_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - _LIVE_OVERLAP_MS
-                now_str      = datetime.now().strftime("%H:%M:%S")
-                live.update(render(now_str))
+                live.update(render(datetime.now().strftime("%H:%M:%S")))
 
                 if threshold is not None and not threshold_alerted:
                     cost = total_cost(usage)
                     if cost >= threshold:
                         threshold_alerted = True
-                        # Pause the live display just long enough to print the alert.
                         live.stop()
                         console.print(
                             f"\n[bold red]⚠  THRESHOLD EXCEEDED:[/bold red]  "
                             f"${cost:.4f} ≥ ${threshold:.2f}\n"
                         )
                         live.start()
-
         except KeyboardInterrupt:
             pass
 

@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from rich import box
 from rich.table import Table
 
 from .pricing import lookup, calculate_cost
+
+
+def period_label(period: str) -> str:
+    now = datetime.now()
+    if period == "today":
+        return f"Today ({now.strftime('%Y-%m-%d')})"
+    if period == "yesterday":
+        y = now - timedelta(days=1)
+        return f"Yesterday ({y.strftime('%Y-%m-%d')})"
+    if period == "week":
+        return "Past 7 Days"
+    return period
 
 
 def _fmt_tokens(n: int) -> str:
