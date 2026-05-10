@@ -167,12 +167,10 @@ def _run_live(client, period: str, threshold: float | None) -> None:
                     cost = total_cost(usage)
                     if cost >= threshold:
                         threshold_alerted = True
-                        live.stop()
                         console.print(
                             f"\n[bold red]⚠  THRESHOLD EXCEEDED:[/bold red]  "
                             f"${cost:.4f} ≥ ${threshold:.2f}\n"
                         )
-                        live.start()
         except KeyboardInterrupt:
             pass
 
