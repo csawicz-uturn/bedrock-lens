@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-bedrock-usage = "bedrock_lens.cli:main"
+bedrock-lens = "bedrock_lens.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["bedrock_lens"]

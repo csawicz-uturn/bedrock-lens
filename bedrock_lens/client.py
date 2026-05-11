@@ -48,7 +48,7 @@ def handle_client_error(exc: ClientError) -> None:
     if code == "ResourceNotFoundException":
         console.print(f"[yellow]Log group not found:[/yellow] {LOG_GROUP}")
         console.print(
-            "[dim]Run [bold]bedrock-usage --setup[/bold] to enable "
+            "[dim]Run [bold]bedrock-lens --setup[/bold] to enable "
             "Bedrock model invocation logging.[/dim]"
         )
     elif code in ("AccessDeniedException", "UnauthorizedException"):

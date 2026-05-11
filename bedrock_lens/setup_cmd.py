@@ -167,7 +167,7 @@ def run_setup(region: str | None, profile: str | None) -> None:
         "\n[bold green]✓ Setup complete![/bold green]\n"
         "Bedrock will now log every model invocation to CloudWatch.\n"
         "[dim]First entries appear within ~30 s of your next Bedrock call.[/dim]\n"
-        "\nRun [bold]bedrock-usage --today[/bold] to see your usage."
+        "\nRun [bold]bedrock-lens --today[/bold] to see your usage."
     )
 
 

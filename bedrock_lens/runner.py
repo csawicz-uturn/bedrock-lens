@@ -48,7 +48,7 @@ def run_once(client, period: str, threshold: float | None, since: str | None) ->
         console.print(f"\n[yellow]No Bedrock invocations found for {label}.[/yellow]")
         console.print(
             "[dim]If you haven't enabled logging yet, run "
-            "[bold]bedrock-usage --setup[/bold].[/dim]"
+            "[bold]bedrock-lens --setup[/bold].[/dim]"
         )
         return
 

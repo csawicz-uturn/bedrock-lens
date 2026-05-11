@@ -33,20 +33,21 @@ uv tool install .
 ## Usage
 
 ```bash
-bedrock-usage                        # today's usage (default)
-bedrock-usage --yesterday
-bedrock-usage --week
-bedrock-usage --since 2h             # last 2 hours
-bedrock-usage --since 30m            # last 30 minutes
-bedrock-usage --live                 # tail mode, refreshes every 5s
-bedrock-usage --since 1h --live      # live tail for the last hour
-bedrock-usage --live --threshold 2   # alert when spend crosses $2
-bedrock-usage --setup                # one-time setup wizard
+bedrock-lens                        # today's usage (default)
+bedrock-lens --yesterday
+bedrock-lens --week
+bedrock-lens --since 2h             # last 2 hours
+bedrock-lens --since 30m            # last 30 minutes
+bedrock-lens --since 1d             # last 1 day
+bedrock-lens --live                 # tail mode, refreshes every 5s
+bedrock-lens --since 1h --live      # live tail for the last hour
+bedrock-lens --live --threshold 2   # alert when spend crosses $2
+bedrock-lens --setup                # one-time setup wizard
 ```
 
 ```bash
 # different profile / region
-bedrock-usage --profile my-profile --region us-west-2
+bedrock-lens --profile my-profile --region us-west-2
 ```
 
 ## First-time setup
@@ -54,7 +55,7 @@ bedrock-usage --profile my-profile --region us-west-2
 Bedrock doesn't log invocations by default. Run the setup wizard once per AWS account:
 
 ```bash
-bedrock-usage --setup
+bedrock-lens --setup
 ```
 
 This creates the CloudWatch log group, an IAM role for Bedrock to write to it, and enables model invocation logging. Takes about 10 seconds. After that, every Bedrock call shows up within ~30 seconds.

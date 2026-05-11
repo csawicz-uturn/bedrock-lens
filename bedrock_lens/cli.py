@@ -41,12 +41,12 @@ def main(
     \b
     Examples
     --------
-      bedrock-usage                    # today's usage
-      bedrock-usage --week             # past 7 days
-      bedrock-usage --since 2h         # last 2 hours
-      bedrock-usage --since 30m --live # live tail for the last 30 min
-      bedrock-usage --live --threshold 2.00   # alert at $2
-      bedrock-usage --setup            # one-time setup wizard
+      bedrock-lens                    # today's usage
+      bedrock-lens --week             # past 7 days
+      bedrock-lens --since 2h         # last 2 hours
+      bedrock-lens --since 30m --live # live tail for the last 30 min
+      bedrock-lens --live --threshold 2.00   # alert at $2
+      bedrock-lens --setup            # one-time setup wizard
     """
     if setup:
         run_setup(region, profile)
