@@ -26,7 +26,7 @@ def _resolve(period: str, since: str | None, live: bool = False) -> tuple[int, i
         return start_ms, end_ms, since_label(since)
     start_ms, end_ms = get_time_range(period)
     label = period_label(period)
-    if live and period in ("yesterday", "week"):
+    if live:
         label = f"Since {label}"
     return start_ms, end_ms, label
 
@@ -67,6 +67,12 @@ def run_once(client, period: str, threshold: float | None, since: str | None) ->
 
 def run_live(client, period: str, threshold: float | None, since: str | None) -> None:
     start_ms, _, label = _resolve(period, since, live=True)
+
+    # --since gives a relative label that goes stale as the tool runs.
+    # Pin it to the actual wall-clock start time instead.
+    if since:
+        start_dt = datetime.fromtimestamp(start_ms / 1000)
+        label = f"Since {start_dt.strftime('%H:%M:%S')}"
 
     usage: dict[str, dict] = {}
     seen_ids: set[str] = set()
