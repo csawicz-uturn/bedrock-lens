@@ -3,6 +3,11 @@ from __future__ import annotations
 import json
 import re
 
+# Pricing strategy: at startup, init_pricing() fetches live on-demand prices from the
+# AWS Price List API (AmazonBedrock, us-east-1 endpoint) and caches them. lookup() checks
+# the live cache first. If a model is missing (e.g. Claude, which AWS hasn't added yet),
+# it falls back to _TABLE below. All prices are per 1M tokens.
+
 # (pattern, input_per_1M_usd, output_per_1M_usd, display_name)
 # Ordered most-specific first so the first match wins.
 _TABLE: list[tuple[str, float, float, str]] = [
