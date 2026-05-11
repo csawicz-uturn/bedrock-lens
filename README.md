@@ -19,15 +19,13 @@ There's no `bedrock usage` command. This is that command.
 ## Install
 
 ```bash
-uv tool install git+https://github.com/OmarCodes022/bedrock-lens
+pip install bedrock-lens
 ```
 
-Or from source:
+Or with uv:
 
 ```bash
-git clone https://github.com/OmarCodes022/bedrock-lens
-cd bedrock-lens
-uv tool install .
+uv tool install bedrock-lens
 ```
 
 ## Usage
