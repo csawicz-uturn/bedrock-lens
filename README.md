@@ -2,13 +2,14 @@
 
 Real-time token usage and cost monitoring for AWS Bedrock — because Cost Explorer won't tell you until tomorrow.
 
-| Model             | Calls | Input Tokens | Output Tokens | Total Tokens | Est. Cost |
-|-------------------|------:|-------------:|--------------:|-------------:|----------:|
-| Claude Opus 4     |     2 |       12,540 |         3,812 |       16,352 |   $0.4746 |
-| Claude Sonnet 4   |    14 |       48,300 |        11,220 |       59,520 |   $0.3132 |
-| Claude Haiku 4    |    38 |       63,807 |         9,441 |       73,248 |   $0.0888 |
-| Llama 3.1 70B     |     5 |        4,200 |         1,830 |        6,030 |   $0.0060 |
-| **TOTAL**         |    59 |      128,847 |        26,303 |      155,150 |   $0.8826 |
+| Model              | Calls | Input Tokens | Output Tokens | Total Tokens | Est. Cost |
+|--------------------|------:|-------------:|--------------:|-------------:|----------:|
+| Claude Opus 4      |     5 |       48,200 |        14,300 |       62,500 |   $1.7955 |
+| Claude Sonnet 4.6  |    22 |      182,400 |        43,100 |      225,500 |   $1.3131 |
+| Claude Haiku 4.5   |    91 |      310,500 |        38,200 |      348,700 |   $0.5516 |
+| Llama 3.1 70B      |    12 |       28,400 |         9,800 |       38,200 |   $0.0173 |
+| DeepSeek V3.1      |     8 |       41,200 |        12,600 |       53,800 |   $0.0451 |
+| **TOTAL**          |   138 |      610,700 |       118,000 |      728,700 |   $3.7226 |
 
 ## The problem
 
@@ -68,9 +69,13 @@ Live mode (`--live`) polls every 5 seconds with a 90-second overlap window to ha
 
 ## Supported models
 
-Claude (Haiku, Sonnet, Opus — v3 through v4), Amazon Titan, Meta Llama 3 / 3.1 / 3.2, Mistral, Mixtral, Cohere Command R / R+, AI21 Jamba.
+All models available on Amazon Bedrock are displayed with token counts. Cost estimation works as follows:
 
-Pricing is per the AWS on-demand rates for `us-east-1`. Unknown models show `N/A` for cost but still display token counts.
+**Live pricing (via AWS Price List API):** Llama 3 / 3.1 / 3.2 / 3.3 / 4, Mistral, Mixtral, DeepSeek, Gemma, Qwen3, Nova, Kimi, MiniMax, Nemotron, GLM, and 50+ others. Prices are fetched at runtime for your region, so they stay up to date automatically.
+
+**Hardcoded fallback:** Claude (Haiku, Sonnet, Opus — v3 through v4), Amazon Titan, Cohere Command R / R+, AI21 Jamba. AWS hasn't added these to the Price List API yet, so prices are bundled with the tool and updated on each release.
+
+Token counts are always accurate for every model — they come directly from CloudWatch logs written by Bedrock itself. Only cost estimation depends on the pricing source; unknown models show `N/A` for cost but tokens are never affected.
 
 ## Requirements
 
