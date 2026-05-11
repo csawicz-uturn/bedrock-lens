@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Generator, TYPE_CHECKING
 
@@ -28,6 +29,24 @@ def get_time_range(period: str) -> tuple[int, int]:
     else:
         raise ValueError(f"Unknown period: {period!r}")
     return int(start.timestamp() * 1000), int(end.timestamp() * 1000)
+
+
+_SINCE_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+_SINCE_RE    = re.compile(r"^(\d+(?:\.\d+)?)\s*([smhd])$")
+
+
+def parse_since(value: str) -> tuple[int, int]:
+    """Parse a duration string (e.g. '30m', '2h', '1d') into (start_ms, end_ms)."""
+    m = _SINCE_RE.match(value.strip().lower())
+    if not m:
+        raise ValueError(
+            f"Invalid duration {value!r}. "
+            "Use a number followed by s, m, h, or d — e.g. 30m, 2h, 1d."
+        )
+    seconds = float(m.group(1)) * _SINCE_UNITS[m.group(2)]
+    now     = datetime.now(timezone.utc)
+    start   = now - timedelta(seconds=seconds)
+    return int(start.timestamp() * 1000), int(now.timestamp() * 1000)
 
 
 def iter_log_events(
