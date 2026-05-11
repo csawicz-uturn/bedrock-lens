@@ -11,8 +11,8 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .client import make_client, handle_client_error
-from .cloudwatch import iter_log_events, aggregate, get_time_range
-from .display import build_table, total_cost, period_label
+from .cloudwatch import iter_log_events, aggregate, get_time_range, parse_since
+from .display import build_table, total_cost, period_label, since_label
 from .setup_cmd import run_setup
 
 console = Console()
@@ -38,12 +38,15 @@ _LIVE_OVERLAP_MS = 90_000
               help="AWS region (default: from env / ~/.aws/config).")
 @click.option("--profile", default=None, envvar="AWS_PROFILE",
               help="AWS named profile.")
+@click.option("--since", default=None, metavar="DURATION",
+              help="Show usage for the last N seconds/minutes/hours/days (e.g. 30m, 2h, 1d).")
 @click.option("--setup", is_flag=True, is_eager=True,
               help="Run one-time setup to enable Bedrock model invocation logging.")
 def main(
     period: str,
     live: bool,
     threshold: float | None,
+    since: str | None,
     region: str | None,
     profile: str | None,
     setup: bool,
@@ -56,6 +59,8 @@ def main(
       bedrock-usage                    # today's usage
       bedrock-usage --week             # past 7 days
       bedrock-usage --live             # live tail, refreshes every 5 s
+      bedrock-usage --since 2h         # last 2 hours
+      bedrock-usage --since 30m --live # live tail for the last 30 min
       bedrock-usage --live --threshold 2.00   # alert at $2
       bedrock-usage --setup            # one-time setup wizard
     """
@@ -63,19 +68,29 @@ def main(
         run_setup(region, profile)
         return
 
+    if since:
+        try:
+            parse_since(since)  # validate before creating the client
+        except ValueError as exc:
+            raise click.BadParameter(str(exc), param_hint="--since") from exc
+
     client = make_client(region, profile)
 
     if live:
-        _run_live(client, period, threshold)
+        _run_live(client, period, threshold, since)
     else:
-        _run_once(client, period, threshold)
+        _run_once(client, period, threshold, since)
 
 
 # ── One-shot display ──────────────────────────────────────────────────────────
 
-def _run_once(client, period: str, threshold: float | None) -> None:
-    label = period_label(period)
-    start_ms, end_ms = get_time_range(period)
+def _run_once(client, period: str, threshold: float | None, since: str | None) -> None:
+    if since:
+        start_ms, end_ms = parse_since(since)
+        label = since_label(since)
+    else:
+        start_ms, end_ms = get_time_range(period)
+        label = period_label(period)
 
     console.print(f"[dim]Fetching {label} from CloudWatch…[/dim]")
 
@@ -110,9 +125,13 @@ def _run_once(client, period: str, threshold: float | None) -> None:
 
 # ── Live tail mode ────────────────────────────────────────────────────────────
 
-def _run_live(client, period: str, threshold: float | None) -> None:
-    label     = period_label(period)
-    start_ms, _ = get_time_range(period)
+def _run_live(client, period: str, threshold: float | None, since: str | None) -> None:
+    if since:
+        start_ms, _ = parse_since(since)
+        label = since_label(since)
+    else:
+        start_ms, _ = get_time_range(period)
+        label = period_label(period)
 
     usage: dict[str, dict] = {}
     seen_ids: set[str] = set()
