@@ -15,12 +15,12 @@ from .setup_cmd import run_setup
               help="Show yesterday's usage.")
 @click.option("--week",      "period", flag_value="week",
               help="Show the past 7 days.")
+@click.option("--since", default=None, metavar="DURATION",
+              help="Show usage for the last N seconds/minutes/hours/days (e.g. 30m, 2h, 1d).")
 @click.option("--live",  is_flag=True,
               help="Tail mode — refresh table as new calls arrive.")
 @click.option("--threshold", type=float, default=None, metavar="DOLLARS",
               help="Print a warning when total spend crosses this amount.")
-@click.option("--since", default=None, metavar="DURATION",
-              help="Show usage for the last N seconds/minutes/hours/days (e.g. 30m, 2h, 1d).")
 @click.option("--region",  default=None, envvar="AWS_DEFAULT_REGION",
               help="AWS region (default: from env / ~/.aws/config).")
 @click.option("--profile", default=None, envvar="AWS_PROFILE",

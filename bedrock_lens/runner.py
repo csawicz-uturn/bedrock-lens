@@ -19,13 +19,16 @@ _POLL_SECONDS    = 5
 _LIVE_OVERLAP_MS = 90_000
 
 
-def _resolve(period: str, since: str | None) -> tuple[int, int, str]:
+def _resolve(period: str, since: str | None, live: bool = False) -> tuple[int, int, str]:
     """Return (start_ms, end_ms, label) for either a period or a --since duration."""
     if since:
         start_ms, end_ms = parse_since(since)
         return start_ms, end_ms, since_label(since)
     start_ms, end_ms = get_time_range(period)
-    return start_ms, end_ms, period_label(period)
+    label = period_label(period)
+    if live:
+        label = f"Since {label}"
+    return start_ms, end_ms, label
 
 
 def run_once(client, period: str, threshold: float | None, since: str | None) -> None:
@@ -63,7 +66,17 @@ def run_once(client, period: str, threshold: float | None, since: str | None) ->
 
 
 def run_live(client, period: str, threshold: float | None, since: str | None) -> None:
-    start_ms, _, label = _resolve(period, since)
+    start_ms, _, label = _resolve(period, since, live=True)
+
+    # --since gives a relative label that goes stale as the tool runs.
+    # Show the duration + the pinned anchor time so it's always unambiguous.
+    if since:
+        start_dt = datetime.fromtimestamp(start_ms / 1000)
+        if start_dt.date() < datetime.now().date():
+            anchor = start_dt.strftime("%b %d, %H:%M")
+        else:
+            anchor = start_dt.strftime("%H:%M:%S")
+        label = f"Last {since} · from {anchor}"
 
     usage: dict[str, dict] = {}
     seen_ids: set[str] = set()
