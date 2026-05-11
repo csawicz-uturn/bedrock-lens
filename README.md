@@ -36,7 +36,10 @@ uv tool install .
 bedrock-usage                        # today's usage (default)
 bedrock-usage --yesterday
 bedrock-usage --week
+bedrock-usage --since 2h             # last 2 hours
+bedrock-usage --since 30m            # last 30 minutes
 bedrock-usage --live                 # tail mode, refreshes every 5s
+bedrock-usage --since 1h --live      # live tail for the last hour
 bedrock-usage --live --threshold 2   # alert when spend crosses $2
 bedrock-usage --setup                # one-time setup wizard
 ```
