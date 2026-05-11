@@ -69,10 +69,14 @@ def run_live(client, period: str, threshold: float | None, since: str | None) ->
     start_ms, _, label = _resolve(period, since, live=True)
 
     # --since gives a relative label that goes stale as the tool runs.
-    # Pin it to the actual wall-clock start time instead.
+    # Show the duration + the pinned anchor time so it's always unambiguous.
     if since:
         start_dt = datetime.fromtimestamp(start_ms / 1000)
-        label = f"Since {start_dt.strftime('%H:%M:%S')}"
+        if start_dt.date() < datetime.now().date():
+            anchor = start_dt.strftime("%b %d, %H:%M")
+        else:
+            anchor = start_dt.strftime("%H:%M:%S")
+        label = f"Last {since} · from {anchor}"
 
     usage: dict[str, dict] = {}
     seen_ids: set[str] = set()
