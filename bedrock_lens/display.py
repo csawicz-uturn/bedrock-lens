@@ -20,6 +20,15 @@ def period_label(period: str) -> str:
     return period
 
 
+def since_label(value: str) -> str:
+    unit_names = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}
+    v = value.strip().lower()
+    unit = unit_names.get(v[-1], v[-1])
+    amount = v[:-1].rstrip()
+    amount = amount.rstrip("0").rstrip(".") if "." in amount else amount
+    return f"Last {amount} {unit}"
+
+
 def _fmt_tokens(n: int) -> str:
     return f"{n:,}"
 
