@@ -12,6 +12,7 @@ from rich.text import Text
 from .client import handle_client_error
 from .cloudwatch import iter_log_events, aggregate, get_time_range, parse_since
 from .display import build_table, total_cost, period_label, since_label
+from .pricing import init_pricing
 
 console = Console()
 
@@ -34,6 +35,7 @@ def _resolve(period: str, since: str | None, live: bool = False) -> tuple[int, i
 def run_once(client, period: str, threshold: float | None, since: str | None) -> None:
     start_ms, end_ms, label = _resolve(period, since)
 
+    init_pricing(client.meta.region_name)
     console.print(f"[dim]Fetching {label} from CloudWatch…[/dim]")
 
     try:
@@ -66,6 +68,7 @@ def run_once(client, period: str, threshold: float | None, since: str | None) ->
 
 
 def run_live(client, period: str, threshold: float | None, since: str | None) -> None:
+    init_pricing(client.meta.region_name)
     start_ms, _, label = _resolve(period, since, live=True)
 
     # --since gives a relative label that goes stale as the tool runs.

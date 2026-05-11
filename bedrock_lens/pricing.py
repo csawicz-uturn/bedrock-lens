@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import re
+
 # (pattern, input_per_1k_usd, output_per_1k_usd, display_name)
 # Ordered most-specific first so the first match wins.
 _TABLE: list[tuple[str, float, float, str]] = [
@@ -50,13 +53,94 @@ _TABLE: list[tuple[str, float, float, str]] = [
     ("jamba-1-5-mini",          0.0002,   0.0004,  "Jamba 1.5 Mini"),
 ]
 
+_REGION_TO_LOCATION: dict[str, str] = {
+    "us-east-1":      "US East (N. Virginia)",
+    "us-east-2":      "US East (Ohio)",
+    "us-west-1":      "US West (N. California)",
+    "us-west-2":      "US West (Oregon)",
+    "eu-west-1":      "Europe (Ireland)",
+    "eu-west-2":      "Europe (London)",
+    "eu-west-3":      "Europe (Paris)",
+    "eu-central-1":   "Europe (Frankfurt)",
+    "eu-north-1":     "Europe (Stockholm)",
+    "ap-northeast-1": "Asia Pacific (Tokyo)",
+    "ap-northeast-2": "Asia Pacific (Seoul)",
+    "ap-southeast-1": "Asia Pacific (Singapore)",
+    "ap-southeast-2": "Asia Pacific (Sydney)",
+    "ap-south-1":     "Asia Pacific (Mumbai)",
+    "ca-central-1":   "Canada (Central)",
+    "sa-east-1":      "South America (Sao Paulo)",
+}
+
+_live_cache: dict[str, tuple[float, float, str]] | None = None
+
+
+def _normalize(s: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', s.lower())
+
+
+def _fetch_live(region: str | None) -> dict[str, tuple[float, float, str]]:
+    try:
+        import boto3
+        location = _REGION_TO_LOCATION.get(region or "us-east-1", "US East (N. Virginia)")
+        client = boto3.client('pricing', region_name='us-east-1')
+        paginator = client.get_paginator('get_products')
+
+        raw: dict[str, dict] = {}
+        for page in paginator.paginate(
+            ServiceCode='AmazonBedrock',
+            Filters=[{'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location}],
+        ):
+            for p in page['PriceList']:
+                obj = json.loads(p)
+                attr = obj['product']['attributes']
+                model_name = attr.get('model', '')
+                if not model_name:
+                    continue
+                inference_type = attr.get('inferenceType', '')
+                if inference_type not in ('Input tokens', 'Output tokens'):
+                    continue
+                price = float(
+                    list(
+                        list(obj['terms']['OnDemand'].values())[0]['priceDimensions'].values()
+                    )[0]['pricePerUnit']['USD']
+                )
+                key = _normalize(model_name)
+                if key not in raw:
+                    raw[key] = {'display': model_name}
+                if 'Input' in inference_type:
+                    raw[key]['input'] = price
+                else:
+                    raw[key]['output'] = price
+
+        return {
+            key: (data['input'], data['output'], data['display'])
+            for key, data in raw.items()
+            if 'input' in data and 'output' in data
+        }
+    except Exception:
+        return {}
+
+
+def init_pricing(region: str | None) -> None:
+    global _live_cache
+    _live_cache = _fetch_live(region)
+
 
 def lookup(model_id: str) -> tuple[float, float, str]:
     """Return (input_per_1k, output_per_1k, display_name) for a model ID."""
     lower = model_id.lower()
+    norm = _normalize(lower)
+
+    if _live_cache:
+        for key, (in_p, out_p, name) in sorted(_live_cache.items(), key=lambda x: -len(x[0])):
+            if key in norm:
+                return in_p, out_p, name
+
     for pattern, in_p, out_p, name in _TABLE:
         if pattern in lower:
             return in_p, out_p, name
+
     return 0.0, 0.0, model_id
 
 
