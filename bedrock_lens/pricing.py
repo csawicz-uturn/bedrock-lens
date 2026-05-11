@@ -3,16 +3,23 @@ from __future__ import annotations
 # (pattern, input_per_1k_usd, output_per_1k_usd, display_name)
 # Ordered most-specific first so the first match wins.
 _TABLE: list[tuple[str, float, float, str]] = [
-    # Claude — Opus
+    # Claude — Opus (most-specific version first)
+    ("claude-opus-4-7",         0.0055,   0.0275,  "Claude Opus 4.7"),
+    ("claude-opus-4-6",         0.0055,   0.0275,  "Claude Opus 4.6"),
+    ("claude-opus-4-5",         0.0055,   0.0275,  "Claude Opus 4.5"),
+    ("claude-opus-4-1",         0.015,    0.075,   "Claude Opus 4.1"),
     ("claude-opus-4",           0.015,    0.075,   "Claude Opus 4"),
     ("claude-3-opus",           0.015,    0.075,   "Claude 3 Opus"),
     # Claude — Sonnet
+    ("claude-sonnet-4-6",       0.0033,   0.0165,  "Claude Sonnet 4.6"),
+    ("claude-sonnet-4-5",       0.0033,   0.0165,  "Claude Sonnet 4.5"),
     ("claude-sonnet-4",         0.003,    0.015,   "Claude Sonnet 4"),
     ("claude-3-7-sonnet",       0.003,    0.015,   "Claude 3.7 Sonnet"),
     ("claude-3-5-sonnet",       0.003,    0.015,   "Claude 3.5 Sonnet"),
     ("claude-3-sonnet",         0.003,    0.015,   "Claude 3 Sonnet"),
     # Claude — Haiku
-    ("claude-haiku-4",          0.0008,   0.004,   "Claude Haiku 4"),
+    ("claude-haiku-4-5",        0.0011,   0.0055,  "Claude Haiku 4.5"),
+    ("claude-haiku-4",          0.0011,   0.0055,  "Claude Haiku 4"),
     ("claude-3-5-haiku",        0.0008,   0.004,   "Claude 3.5 Haiku"),
     ("claude-3-haiku",          0.00025,  0.00125, "Claude 3 Haiku"),
     # Amazon Titan
