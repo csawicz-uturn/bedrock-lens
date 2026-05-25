@@ -2,14 +2,7 @@
 
 Real-time token usage and cost monitoring for AWS Bedrock — because Cost Explorer won't tell you until tomorrow.
 
-| Model              | Calls | Input Tokens | Output Tokens | Total Tokens | Est. Cost |
-|--------------------|------:|-------------:|--------------:|-------------:|----------:|
-| Claude Opus 4      |     5 |       48,200 |        14,300 |       62,500 |   $1.7955 |
-| Claude Sonnet 4.6  |    22 |      182,400 |        43,100 |      225,500 |   $1.3131 |
-| Claude Haiku 4.5   |    91 |      310,500 |        38,200 |      348,700 |   $0.5516 |
-| Llama 3.1 70B      |    12 |       28,400 |         9,800 |       38,200 |   $0.0173 |
-| DeepSeek V3.1      |     8 |       41,200 |        12,600 |       53,800 |   $0.0451 |
-| **TOTAL**          |   138 |      610,700 |       118,000 |      728,700 |   $3.7226 |
+![bedrock-lens preview](assets/image.png)
 
 ## The problem
 
