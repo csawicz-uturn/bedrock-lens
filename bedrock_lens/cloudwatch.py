@@ -3,12 +3,9 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone, timedelta
-from typing import Generator, TYPE_CHECKING
+from typing import Generator
 
 from botocore.exceptions import ClientError
-
-if TYPE_CHECKING:
-    from mypy_boto3_logs import CloudWatchLogsClient
 
 LOG_GROUP = "/aws/bedrock/model-invocations"
 
@@ -89,11 +86,28 @@ def iter_log_events(
         kwargs["nextToken"] = token
 
 
+_CROSS_REGION_PREFIXES = ("us.", "eu.", "ap.", "us-gov.", "global.")
+
+
+def normalize_model_id(model_id: str) -> str:
+    """Normalize model ID so all variants of the same model merge into one row.
+
+    Handles cross-region prefixes (us., eu., global.) and full ARNs
+    (arn:aws:bedrock:...:inference-profile/us.anthropic.X).
+    """
+    if model_id.startswith("arn:"):
+        model_id = model_id.split("/")[-1]
+    for prefix in _CROSS_REGION_PREFIXES:
+        if model_id.startswith(prefix):
+            return model_id[len(prefix):]
+    return model_id
+
+
 def aggregate(records) -> dict[str, dict]:
-    """Sum token counts and call counts keyed by modelId."""
+    """Sum token counts and call counts keyed by normalized modelId."""
     usage: dict[str, dict] = {}
     for r in records:
-        model = r.get("modelId", "unknown")
+        model = normalize_model_id(r.get("modelId", "unknown"))
         inp = (r.get("input") or {}).get("inputTokenCount") or 0
         out = (r.get("output") or {}).get("outputTokenCount") or 0
         if model not in usage:

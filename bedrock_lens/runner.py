@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .client import handle_client_error
-from .cloudwatch import iter_log_events, aggregate, get_time_range, parse_since
+from .cloudwatch import iter_log_events, aggregate, get_time_range, parse_since, normalize_model_id
 from .display import build_table, total_cost, period_label, since_label
 from .pricing import init_pricing
 
@@ -94,7 +94,7 @@ def run_live(client, period: str, threshold: float | None, since: str | None) ->
                     continue
                 if eid:
                     seen_ids.add(eid)
-                model = r.get("modelId", "unknown")
+                model = normalize_model_id(r.get("modelId", "unknown"))
                 inp   = (r.get("input")  or {}).get("inputTokenCount")  or 0
                 out   = (r.get("output") or {}).get("outputTokenCount") or 0
                 if model not in usage:
