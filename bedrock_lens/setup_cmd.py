@@ -42,7 +42,7 @@ _PERMISSION_POLICY = {
 }
 
 
-def run_setup(region: str | None, profile: str | None) -> None:
+def run_setup(region: str | None, profile: str | None, retention: int | None = None) -> None:
     session = boto3.Session(profile_name=profile, region_name=region)
     resolved_region = session.region_name
     try:
@@ -89,6 +89,7 @@ def run_setup(region: str | None, profile: str | None) -> None:
                 f"  Log group : [cyan]{cw['logGroupName']}[/cyan]\n"
                 f"  Role ARN  : [cyan]{cw.get('roleArn', 'n/a')}[/cyan]"
             )
+            _apply_retention(logs, retention)
             return
     except ClientError as exc:
         console.print(
@@ -107,6 +108,8 @@ def run_setup(region: str | None, profile: str | None) -> None:
         else:
             console.print(f"[red]failed[/red] — {exc.response['Error']['Message']}")
             return
+
+    _apply_retention(logs, retention)
 
     # ── 3. Create / verify IAM role ──────────────────────────────────────────
     role_arn: str | None = None
@@ -169,6 +172,29 @@ def run_setup(region: str | None, profile: str | None) -> None:
         "[dim]First entries appear within ~30 s of your next Bedrock call.[/dim]\n"
         "\nRun [bold]bedrock-lens --today[/bold] to see your usage."
     )
+
+
+def _apply_retention(logs, retention: int | None) -> None:
+    if retention is None:
+        console.print(
+            "  [dim]Tip: re-run with [bold]--retention DAYS[/bold] to set a retention policy, "
+            "or [bold]--retention 0[/bold] to remove one.[/dim]"
+        )
+    elif retention == 0:
+        try:
+            logs.delete_retention_policy(logGroupName=LOG_GROUP)
+            console.print("  [dim]Retention policy removed — logs will never expire.[/dim]")
+        except ClientError as exc:
+            console.print(f"  [yellow]Warning: could not remove retention policy:[/yellow] {exc.response['Error']['Message']}")
+    else:
+        try:
+            logs.put_retention_policy(logGroupName=LOG_GROUP, retentionInDays=retention)
+            console.print(
+                f"  [dim]Retention set to [bold]{retention}[/bold] days. "
+                "To remove it, re-run with [bold]--retention 0[/bold].[/dim]"
+            )
+        except ClientError as exc:
+            console.print(f"  [yellow]Warning: could not set retention policy:[/yellow] {exc.response['Error']['Message']}")
 
 
 def _print_manual_steps(account_id: str, region: str) -> None:
