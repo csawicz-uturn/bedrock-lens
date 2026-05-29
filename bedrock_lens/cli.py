@@ -27,6 +27,8 @@ from .setup_cmd import run_setup
               help="AWS named profile.")
 @click.option("--setup", is_flag=True, is_eager=True,
               help="Run one-time setup to enable Bedrock model invocation logging.")
+@click.option("--retention", type=int, default=None, metavar="DAYS",
+              help="Set log retention in days when running --setup (0 = never expire). Omit to leave existing policy unchanged.")
 def main(
     period: str,
     live: bool,
@@ -35,21 +37,24 @@ def main(
     region: str | None,
     profile: str | None,
     setup: bool,
+    retention: int | None,
 ) -> None:
     """Monitor AWS Bedrock token usage and costs in real time.
 
     \b
     Examples
     --------
-      bedrock-lens                    # today's usage
-      bedrock-lens --week             # past 7 days
-      bedrock-lens --since 2h         # last 2 hours
-      bedrock-lens --since 30m --live # live tail for the last 30 min
-      bedrock-lens --live --threshold 2.00   # alert at $2
-      bedrock-lens --setup            # one-time setup wizard
+      bedrock-lens                          # today's usage
+      bedrock-lens --week                   # past 7 days
+      bedrock-lens --since 2h               # last 2 hours
+      bedrock-lens --since 30m --live       # live tail for the last 30 min
+      bedrock-lens --live --threshold 2.00  # alert at $2
+      bedrock-lens --setup                  # one-time setup wizard
+      bedrock-lens --setup --retention 90   # setup + set 90-day log retention
+      bedrock-lens --setup --retention 0    # setup + remove retention policy
     """
     if setup:
-        run_setup(region, profile)
+        run_setup(region, profile, retention)
         return
 
     if since:

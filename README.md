@@ -52,6 +52,15 @@ bedrock-lens --setup
 
 This creates the CloudWatch log group, an IAM role for Bedrock to write to it, and enables model invocation logging. Takes about 10 seconds. After that, every Bedrock call shows up within ~30 seconds.
 
+By default, the log group is created with no retention policy (AWS keeps logs forever). Use `--retention` to control this:
+
+```bash
+bedrock-lens --setup --retention 90   # expire logs after 90 days
+bedrock-lens --setup --retention 0    # remove any existing retention policy
+```
+
+Omitting `--retention` leaves any existing policy untouched.
+
 If you don't have IAM permissions to create roles, the wizard prints the exact policies and CLI command to hand off to your admin.
 
 ## How it works
