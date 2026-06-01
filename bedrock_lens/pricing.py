@@ -111,7 +111,19 @@ def load_overrides() -> dict[str, tuple[float, float, float, float, str]]:
             )
             for model_id, entry in data.items()
         }
-    except Exception:
+    except json.JSONDecodeError:
+        from rich.console import Console
+        Console().print(
+            f"[yellow]Warning:[/yellow] {OVERRIDES_PATH} is corrupt (invalid JSON) "
+            "— price overrides ignored.  Delete the file to suppress this message."
+        )
+        return {}
+    except (KeyError, TypeError, ValueError) as exc:
+        from rich.console import Console
+        Console().print(
+            f"[yellow]Warning:[/yellow] {OVERRIDES_PATH} has unexpected structure "
+            f"({exc}) — price overrides ignored."
+        )
         return {}
 
 
@@ -333,22 +345,31 @@ def _fetch_live_products(region: str) -> dict[str, tuple[float, float, float, fl
                     continue
 
                 try:
-                    price_per_1k = float(
-                        list(
-                            list(obj["terms"]["OnDemand"].values())[0][
-                                "priceDimensions"
-                            ].values()
-                        )[0]["pricePerUnit"]["USD"]
-                    )
+                    dim = list(
+                        list(obj["terms"]["OnDemand"].values())[0][
+                            "priceDimensions"
+                        ].values()
+                    )[0]
+                    unit         = dim.get("unit", "")
+                    price_raw    = float(dim["pricePerUnit"]["USD"])
                 except (KeyError, IndexError, ValueError):
                     continue
+
+                # The Pricing API returns per-1K-token rates for Bedrock models,
+                # but guard against future unit changes to avoid silent 1000x errors.
+                if unit in ("1K tokens", "1000 Tokens"):
+                    price_per_1m = price_raw * 1000
+                elif unit in ("1M tokens", "1000000 Tokens"):
+                    price_per_1m = price_raw          # already per 1M
+                else:
+                    continue  # unknown unit — skip rather than guess
 
                 key = _normalize(model_name)
                 raw.setdefault(key, {"display": model_name})
                 if "Input" in inference_type:
-                    raw[key]["input"] = price_per_1k * 1000
+                    raw[key]["input"] = price_per_1m
                 else:
-                    raw[key]["output"] = price_per_1k * 1000
+                    raw[key]["output"] = price_per_1m
 
         return {
             key: (data["input"], data["output"], 0.0, 0.0, data["display"])

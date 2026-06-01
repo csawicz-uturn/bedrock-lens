@@ -113,7 +113,7 @@ def build_table(usage: dict[str, dict], title: str = "") -> Table:
         table.columns[col].footer = _fmt_tokens(total_cache_write); col += 1
         table.columns[col].footer = _fmt_tokens(total_cache_read);  col += 1
     table.columns[col].footer = _fmt_tokens(total_output); col += 1
-    table.columns[col].footer = _fmt_cost(total_cost_val, all_prices_known or total_cost_val > 0)
+    table.columns[col].footer = _fmt_cost(total_cost_val, all_prices_known)
 
     return table
 
